@@ -120,8 +120,8 @@ public class Uploader {
         mZookeeperConnector.lock(lockPath);
         try {
             // Check if the committed offset has changed.
-            long kafkaCommittedOffsetCount = isOffsetsStorageKafka?mMessageReader.getCommittedOffsetCount(
-                    topicPartition): mZookeeperConnector.getCommittedOffsetCount(topicPartition);
+            long kafkaCommittedOffsetCount = isOffsetsStorageKafka?
+                    mMessageReader.getCommittedOffsetCount(topicPartition): mZookeeperConnector.getCommittedOffsetCount(topicPartition);
             if (kafkaCommittedOffsetCount == committedOffsetCount) {
                 if (mUploadLastSeenOffset) {
                     long zkLastSeenOffset = mZookeeperConnector.getLastSeenOffsetCount(topicPartition);
@@ -307,7 +307,7 @@ public class Uploader {
                            isRequiredToUploadAtTime(topicPartition);
         }
         if (shouldUpload) {
-            long newOffsetCount = mZookeeperConnector.getCommittedOffsetCount(topicPartition);
+            long newOffsetCount = isOffsetsStorageKafka?mMessageReader.getCommittedOffsetCount(topicPartition):mZookeeperConnector.getCommittedOffsetCount(topicPartition);
             long oldOffsetCount = mOffsetTracker.setCommittedOffsetCount(topicPartition,
                     newOffsetCount);
             long lastSeenOffset = mOffsetTracker.getLastSeenOffset(topicPartition);
