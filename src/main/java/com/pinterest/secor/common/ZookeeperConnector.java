@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -53,12 +54,22 @@ public class ZookeeperConnector implements Closeable {
     private HashMap<String, InterProcessMutex> mLocks;
     private String mCommittedOffsetGroupPath;
     private String mLastSeenOffsetGroupPath;
+    private final boolean enabled;
 
     protected ZookeeperConnector() {
+        enabled = true;
     }
 
     public ZookeeperConnector(SecorConfig config) {
         mConfig = config;
+
+        if (mConfig.getZookeeperQuorum() == null || mConfig.getZookeeperQuorum().equals("")){
+            enabled = false;
+            return;
+        } else {
+            enabled = true;
+        }
+
         mCurator = CuratorFrameworkFactory.newClient(mConfig.getZookeeperQuorum(),
             new ExponentialBackoffRetry(1000, 3));
         mCurator.start();
@@ -96,6 +107,10 @@ public class ZookeeperConnector implements Closeable {
     }
 
     public void lock(String lockPath) {
+        if(!enabled) {
+            return;
+        }
+
         assert mLocks.get(lockPath) == null: "mLocks.get(" + lockPath + ") == null";
         InterProcessMutex distributedLock = new InterProcessMutex(mCurator, lockPath);
         mLocks.put(lockPath, distributedLock);
@@ -107,6 +122,9 @@ public class ZookeeperConnector implements Closeable {
     }
 
     public void unlock(String lockPath) {
+        if(!enabled) {
+            return;
+        }
         InterProcessMutex distributedLock = mLocks.get(lockPath);
         assert distributedLock != null: "mLocks.get(" + lockPath + ") != null";
         try {
@@ -164,6 +182,11 @@ public class ZookeeperConnector implements Closeable {
     }
 
     public long getCommittedOffsetCount(TopicPartition topicPartition) throws Exception {
+        if(!enabled) {
+            LOG.warn("Zookeeper is not enabled");
+            return -1;
+        }
+
         String offsetPath = getCommittedOffsetPartitionPath(topicPartition);
         try {
             byte[] data = mCurator.getData().forPath(offsetPath);
@@ -175,6 +198,11 @@ public class ZookeeperConnector implements Closeable {
     }
 
     public long getLastSeenOffsetCount(TopicPartition topicPartition) throws Exception {
+        if(!enabled) {
+            LOG.warn("Zookeeper is not enabled");
+            return -1;
+        }
+
         String offsetPath = getLastSeenOffsetPartitionPath(topicPartition);
         try {
             byte[] data = mCurator.getData().forPath(offsetPath);
@@ -186,6 +214,11 @@ public class ZookeeperConnector implements Closeable {
     }
 
     public List<Integer> getCommittedOffsetPartitions(String topic) throws Exception {
+        if(!enabled) {
+            LOG.warn("Zookeeper is not enabled");
+            return Collections.emptyList();
+        }
+
         String topicPath = getCommittedOffsetTopicPath(topic);
         List<String> partitions = mCurator.getChildren().forPath(topicPath);
         LinkedList<Integer> result = new LinkedList<Integer>();
@@ -234,7 +267,7 @@ public class ZookeeperConnector implements Closeable {
     }
 
     private void createMissingParents(String path) throws Exception {
-      Stat stat = mCurator.checkExists().forPath(path);
+        Stat stat = mCurator.checkExists().forPath(path);
       if (stat == null) {
         mCurator.create()
             .creatingParentsIfNeeded()
@@ -246,6 +279,10 @@ public class ZookeeperConnector implements Closeable {
 
     public void setCommittedOffsetCount(TopicPartition topicPartition, long count)
             throws Exception {
+        if(!enabled) {
+            LOG.warn("Zookeeper is not enabled");
+            return;
+        }
         String offsetPath = getCommittedOffsetPartitionPath(topicPartition);
         LOG.info("creating missing parents for zookeeper path {}", offsetPath);
         createMissingParents(offsetPath);

@@ -20,6 +20,7 @@ package com.pinterest.secor.reader;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Sets;
 import com.pinterest.secor.common.SecorConfig;
 import com.pinterest.secor.common.ZookeeperConnector;
 import com.pinterest.secor.message.Message;
@@ -28,6 +29,7 @@ import com.pinterest.secor.rebalance.RebalanceHandler;
 import com.pinterest.secor.rebalance.RebalanceSubscriber;
 import com.pinterest.secor.rebalance.SecorConsumerRebalanceListener;
 import com.pinterest.secor.util.IdUtil;
+import jnr.a64asm.Offset;
 import org.apache.kafka.clients.consumer.CommitFailedException;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -40,13 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.UnknownHostException;
 import java.time.Duration;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Deque;
-import java.util.List;
-import java.util.Optional;
-import java.util.Properties;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
@@ -160,5 +156,12 @@ public class SecorKafkaMessageIterator implements KafkaMessageIterator, Rebalanc
         String offsetStorage = config.getOffsetsStorage();
         return offsetStorage.equals("kafka") && dualCommitEnabled.equals("true");
 
+    }
+
+    @Override
+    public long getCommittedOffsetCount(com.pinterest.secor.common.TopicPartition topicPartition) {
+        Map<TopicPartition, OffsetAndMetadata> commited = mKafkaConsumer.committed(Sets.newHashSet(new TopicPartition(topicPartition.getTopic(), topicPartition.getPartition())));
+        Optional<OffsetAndMetadata> offsetOpt = commited.values().stream().findFirst();
+        return offsetOpt.isPresent()?offsetOpt.get().offset():-1;
     }
 }

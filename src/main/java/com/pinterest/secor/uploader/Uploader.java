@@ -120,9 +120,9 @@ public class Uploader {
         mZookeeperConnector.lock(lockPath);
         try {
             // Check if the committed offset has changed.
-            long zookeeperCommittedOffsetCount = mZookeeperConnector.getCommittedOffsetCount(
-                    topicPartition);
-            if (zookeeperCommittedOffsetCount == committedOffsetCount) {
+            long kafkaCommittedOffsetCount = isOffsetsStorageKafka?mMessageReader.getCommittedOffsetCount(
+                    topicPartition): mZookeeperConnector.getCommittedOffsetCount(topicPartition);
+            if (kafkaCommittedOffsetCount == committedOffsetCount) {
                 if (mUploadLastSeenOffset) {
                     long zkLastSeenOffset = mZookeeperConnector.getLastSeenOffsetCount(topicPartition);
                     // If the in-memory lastSeenOffset is less than ZK's, this means there was a failed
@@ -169,15 +169,16 @@ public class Uploader {
                 if (mDeterministicUploadPolicyTracker != null) {
                     mDeterministicUploadPolicyTracker.reset(topicPartition);
                 }
-                mZookeeperConnector.setCommittedOffsetCount(topicPartition, lastSeenOffset + 1);
                 mOffsetTracker.setCommittedOffsetCount(topicPartition, lastSeenOffset + 1);
                 if (isOffsetsStorageKafka) {
                     mMessageReader.commit(topicPartition, lastSeenOffset + 1);
+                } else {
+                    mZookeeperConnector.setCommittedOffsetCount(topicPartition, lastSeenOffset + 1);
                 }
                 mMetricCollector.increment("uploader.file_uploads.count", paths.size(), topicPartition.getTopic());
             } else {
                 LOG.warn("Zookeeper committed offset didn't match for topic {} partition {}: {} vs {}",
-                         topicPartition.getTopic(), topicPartition.getTopic(), zookeeperCommittedOffsetCount,
+                         topicPartition.getTopic(), topicPartition.getTopic(), kafkaCommittedOffsetCount,
                          committedOffsetCount);
                 mMetricCollector.increment("uploader.offset_mismatches", topicPartition.getTopic());
             }
