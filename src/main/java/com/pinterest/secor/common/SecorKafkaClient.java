@@ -110,13 +110,6 @@ public class SecorKafkaClient implements KafkaClient {
         Properties props = new Properties();
         props.put("bootstrap.servers", config.getKafkaSeedBrokerHost() + ":" + config.getKafkaSeedBrokerPort());
         props.put("enable.auto.commit", false);
-        if (!"".equals(config.getString("kafka.new.consumer.client.id",""))) {
-            props.put("client.id",config.getString("kafka.new.consumer.client.id"));
-        }
-        if (!"".equals(config.getString("kafka.new.consumer.group.instance.id",""))) {
-            props.put("group.instance.id",config.getString("kafka.new.consumer.group.instance.id"));
-        }
-        props.put("session.timeout.ms",config.getString("kafka.new.consumer.session.timeout.ms","10000"));
         props.put("auto.offset.reset", "earliest");
         props.put("key.deserializer", ByteArrayDeserializer.class);
         props.put("value.deserializer", ByteArrayDeserializer.class);

@@ -89,6 +89,9 @@ public class SecorKafkaMessageIterator implements KafkaMessageIterator, Rebalanc
         props.put("key.deserializer", ByteArrayDeserializer.class);
         props.put("value.deserializer", ByteArrayDeserializer.class);
 
+        optionalConfig(config.getString("kafka.new.consumer.client.id"), conf -> props.put("client.id",conf));
+        optionalConfig(config.getString("kafka.new.consumer.group.instance.id"), conf -> props.put("group.instance.id",conf));
+        optionalConfig(config.getString("kafka.new.consumer.session.timeout.ms"), conf -> props.put("session.timeout.ms",conf));
         optionalConfig(config.getNewConsumerRequestTimeoutMs(), conf -> props.put("request.timeout.ms", conf));
         optionalConfig(config.getSocketReceiveBufferBytes(), conf -> props.put("receive.buffer.bytes", conf));
         optionalConfig(config.getFetchMinBytes(), conf -> props.put("fetch.min.bytes", conf));
