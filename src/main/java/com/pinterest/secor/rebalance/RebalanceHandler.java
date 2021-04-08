@@ -27,7 +27,7 @@ public class RebalanceHandler {
 
     public void uploadOnRevoke(Collection<TopicPartition> assignedPartitions) {
         try {
-            uploader.applyPolicy(true);
+            uploader.applyPolicy(false);
         } catch (Exception e) {
             LOG.info("re-balance force upload failed, cleaning local files now");
         } finally {
@@ -35,6 +35,7 @@ public class RebalanceHandler {
                 forceCleanUp(tp);
             }
             mOffsetTracker.reInitiateOffset();
+            LOG.info("Offsets have been reinitialized");
         }
     }
 

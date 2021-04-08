@@ -89,9 +89,9 @@ public class SecorKafkaMessageIterator implements KafkaMessageIterator, Rebalanc
         props.put("key.deserializer", ByteArrayDeserializer.class);
         props.put("value.deserializer", ByteArrayDeserializer.class);
 
-        optionalConfig(config.getString("kafka.new.consumer.client.id"), conf -> props.put("client.id",conf));
-        optionalConfig(config.getString("kafka.new.consumer.group.instance.id"), conf -> props.put("group.instance.id",conf));
-        optionalConfig(config.getString("kafka.new.consumer.session.timeout.ms"), conf -> props.put("session.timeout.ms",conf));
+        optionalConfig(config.getString("kafka.new.consumer.client.id"), conf -> props.put("client.id", conf));
+        optionalConfig(config.getString("kafka.new.consumer.group.instance.id"), conf -> props.put("group.instance.id", conf));
+        optionalConfig(config.getString("kafka.new.consumer.session.timeout.ms"), conf -> props.put("session.timeout.ms", conf));
         optionalConfig(config.getNewConsumerRequestTimeoutMs(), conf -> props.put("request.timeout.ms", conf));
         optionalConfig(config.getSocketReceiveBufferBytes(), conf -> props.put("receive.buffer.bytes", conf));
         optionalConfig(config.getFetchMinBytes(), conf -> props.put("fetch.min.bytes", conf));
@@ -103,6 +103,7 @@ public class SecorKafkaMessageIterator implements KafkaMessageIterator, Rebalanc
         optionalConfig(config.getSslTruststorePassword(), conf -> props.put("ssl.truststore.password", conf));
         optionalConfig(config.getIsolationLevel(), conf -> props.put("isolation.level", conf));
         optionalConfig(config.getMaxPollRecords(), conf -> props.put("max.poll.records", conf));
+        optionalConfig(config.getMaxPollIntervalMs(), conf -> props.put("max.poll.interval.ms", conf));
         optionalConfig(config.getSaslClientCallbackHandlerClass(), conf -> props.put("sasl.client.callback.handler.class", conf));
         optionalConfig(config.getSaslJaasConfig(), conf -> props.put("sasl.jaas.config", conf));
         optionalConfig(config.getSaslKerberosServiceName(), conf -> props.put("sasl.kerberos.service.name", conf));
@@ -142,7 +143,6 @@ public class SecorKafkaMessageIterator implements KafkaMessageIterator, Rebalanc
     @Override
     public void subscribe(RebalanceHandler handler, SecorConfig config) {
         ConsumerRebalanceListener reBalanceListener = new SecorConsumerRebalanceListener(mKafkaConsumer, mZookeeperConnector, getSkipZookeeperOffsetSeek(config), config.getNewConsumerAutoOffsetReset(), handler);
-        ;
 
         String[] subscribeList = config.getKafkaTopicList();
         if (subscribeList.length == 0 || Strings.isNullOrEmpty(subscribeList[0])) {
@@ -163,8 +163,20 @@ public class SecorKafkaMessageIterator implements KafkaMessageIterator, Rebalanc
 
     @Override
     public long getCommittedOffsetCount(com.pinterest.secor.common.TopicPartition topicPartition) {
-        Map<TopicPartition, OffsetAndMetadata> commited = mKafkaConsumer.committed(Sets.newHashSet(new TopicPartition(topicPartition.getTopic(), topicPartition.getPartition())));
-        Optional<OffsetAndMetadata> offsetOpt = commited.values().stream().findFirst();
-        return offsetOpt.isPresent()?offsetOpt.get().offset():-1;
+        TopicPartition kTopicPartition = new TopicPartition(topicPartition.getTopic(), topicPartition.getPartition());
+        Map<TopicPartition, OffsetAndMetadata> commited = mKafkaConsumer.committed(Sets.newHashSet(kTopicPartition));
+        LOG.info("retrieving offset from kafka for {}/{}",topicPartition.getTopic(), topicPartition.getPartition());
+        if (commited == null) {
+            LOG.debug("committed is null");
+            return -1;
+        }
+        OffsetAndMetadata offset = commited.get(kTopicPartition);
+        if(offset != null) {
+            LOG.debug("offset is non null and is {}",offset.offset());
+            return offset.offset();
+        } else {
+            LOG.debug("offset is null for {}",topicPartition.toString());
+            return -1;
+        }
     }
 }

@@ -93,7 +93,7 @@ public class OffsetTracker {
         long trueCommittedOffsetCount = getTrueCommittedOffsetCount(topicPartition);
         // Committed offsets should never go back.
         assert trueCommittedOffsetCount <= count: Long.toString(trueCommittedOffsetCount) +
-                " <= " + count;
+                " <= " + count + "for topic " + topicPartition.getTopic()  + " and partition " + topicPartition.getPartition();
         mCommittedOffsetCount.put(topicPartition, count);
         return trueCommittedOffsetCount;
     }
